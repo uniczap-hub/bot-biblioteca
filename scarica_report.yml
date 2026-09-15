@@ -1,0 +1,57 @@
+name: Scarica report Sebina
+
+on:
+  schedule:
+    # Ogni notte alle 4:00 ora italiana.
+    # ATTENZIONE: GitHub Actions usa sempre l'orario UTC, quindi il numero qui
+    # sotto è "orario italiano meno 2" in estate (ora legale) o "meno 1" in
+    # inverno (ora solare). 4:00 italiane = 2:00 UTC in estate, 3:00 UTC in
+    # inverno. Mettiamo 3:00 UTC come compromesso semplice: significa che lo
+    # script parte alle 4:00 in inverno e alle 5:00 in estate. Non è un
+    # problema perché il report di Sebina viene generato alle 3:00 italiane
+    # tutte le notti, quindi arriviamo sempre dopo.
+    - cron: "0 3 * * *"
+
+  # Permette anche di far partire lo script a mano dal sito di GitHub,
+  # comodo per fare un test senza aspettare la notte.
+  workflow_dispatch:
+
+jobs:
+  scarica:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Scarica il codice del progetto
+        uses: actions/checkout@v4
+
+      - name: Prepara Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Installa le librerie necessarie
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
+
+      - name: Esegui lo script di download
+        env:
+          SEBINA_USERNAME: ${{ secrets.SEBINA_USERNAME }}
+          SEBINA_PASSWORD: ${{ secrets.SEBINA_PASSWORD }}
+        run: python scarica_report.py
+
+      - name: Salva il nuovo CSV nel repository
+        run: |
+          git config user.name "Bot Biblioteca"
+          git config user.email "bot@example.com"
+          git add report_scaricati/*.csv
+          git diff --cached --quiet || git commit -m "Aggiornamento automatico report $(date +'%Y-%m-%d')"
+          git push
+
+      - name: Salva anche gli screenshot (utili se qualcosa va storto)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshot-controllo
+          path: screenshot_controllo/
+          retention-days: 7
