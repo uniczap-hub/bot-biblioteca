@@ -172,6 +172,14 @@ def scarica_csv(pagina, riga):
 
     download.save_as(str(percorso_file))
     log(f"File CSV scaricato con successo: {percorso_file}")
+
+    # Salviamo ANCHE una copia con nome fisso "catalogo_attuale.csv": il bot
+    # sul sito web leggerà sempre questo stesso indirizzo, invece di dover
+    # cercare ogni volta il nome del file più recente.
+    percorso_fisso = CARTELLA_REPORT / "catalogo_attuale.csv"
+    percorso_fisso.write_bytes(percorso_file.read_bytes())
+    log(f"Copia con nome fisso salvata: {percorso_fisso}")
+
     return percorso_file
 
 
