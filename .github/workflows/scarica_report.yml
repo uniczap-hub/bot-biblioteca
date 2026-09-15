@@ -1,1 +1,46 @@
+name: Scarica report Sebina
 
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  scarica:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Scarica il codice del progetto
+        uses: actions/checkout@v4
+
+      - name: Prepara Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Installa le librerie necessarie
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
+
+      - name: Esegui lo script di download
+        env:
+          SEBINA_USERNAME: ${{ secrets.SEBINA_USERNAME }}
+          SEBINA_PASSWORD: ${{ secrets.SEBINA_PASSWORD }}
+        run: python scarica_report.py
+
+      - name: Salva il nuovo CSV nel repository
+        run: |
+          git config user.name "Bot Biblioteca"
+          git config user.email "bot@example.com"
+          git add report_scaricati/*.csv
+          git diff --cached --quiet || git commit -m "Aggiornamento automatico report $(date +'%Y-%m-%d')"
+          git push
+
+      - name: Salva anche gli screenshot (utili se qualcosa va storto)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshot-controllo
+          path: screenshot_controllo/
+          retention-days: 7
